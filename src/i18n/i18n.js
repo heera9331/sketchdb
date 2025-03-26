@@ -12,6 +12,7 @@ import { fa, persian } from "./locales/fa";
 import { hi, hindi } from "./locales/hi";
 import { uk, ukrainian } from "./locales/uk";
 import { ru, russian } from "./locales/ru";
+import { ro, romanian } from "./locales/ro";
 import { tr, turkish } from "./locales/tr";
 import { mr, marathi } from "./locales/mr";
 import { fr, french } from "./locales/fr";
@@ -29,6 +30,14 @@ import { it, italian } from "./locales/it";
 import { ko, korean } from "./locales/ko";
 import { od, odia } from "./locales/od";
 import { bn, bengali } from "./locales/bn";
+import { ka, kannada } from "./locales/ka";
+import { pl, polish } from "./locales/pl";
+import { no, norwegian } from "./locales/no";
+import { sv, swedish } from "./locales/sv-se";
+import { ur, urdu } from "./locales/ur";
+import { jp, japanese} from "./locales/jp"
+import {ne, nepali} from "./locales/ne"
+import {ug, uyghur} from "./locales/ug";
 
 export const languages = [
   english,
@@ -43,6 +52,7 @@ export const languages = [
   marathi,
   ukrainian,
   russian,
+  romanian,
   turkish,
   french,
   punjabi,
@@ -59,6 +69,14 @@ export const languages = [
   korean,
   odia,
   bengali,
+  kannada,
+  polish,
+  norwegian,
+  swedish,
+  urdu,
+  japanese,
+  nepali,
+  uyghur
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 i18n
@@ -83,6 +101,7 @@ i18n
       mr,
       uk,
       ru,
+      ro,
       tr,
       fr,
       pa,
@@ -99,6 +118,14 @@ i18n
       ko,
       od,
       bn,
+      ka,
+      pl,
+      no,
+      sv,
+      ur,
+      jp,
+      ne,
+      ug
     },
   });
 

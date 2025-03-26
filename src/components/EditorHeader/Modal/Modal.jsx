@@ -12,7 +12,6 @@ import {
   useAreas,
   useEnums,
   useNotes,
-  useSettings,
   useDiagram,
   useTransform,
   useTypes,
@@ -34,20 +33,11 @@ import ImportSource from "./ImportSource";
 import SetTableWidth from "./SetTableWidth";
 import Language from "./Language";
 import Share from "./Share";
-import CodeMirror from "@uiw/react-codemirror";
-import { sql } from "@codemirror/lang-sql";
-import { vscodeDark } from "@uiw/codemirror-theme-vscode";
-import { json } from "@codemirror/lang-json";
-import { githubLight } from "@uiw/codemirror-theme-github";
+import Code from "./Code";
 import { useTranslation } from "react-i18next";
 import { importSQL } from "../../../utils/importSQL";
 import { databases } from "../../../data/databases";
 import { isRtl } from "../../../i18n/utils/rtl";
-
-const languageExtension = {
-  sql: [sql()],
-  json: [json()],
-};
 
 export default function Modal({
   modal,
@@ -58,13 +48,13 @@ export default function Modal({
   exportData,
   setExportData,
   importDb,
+  importFrom,
 }) {
   const { t, i18n } = useTranslation();
   const { setTables, setRelationships, database, setDatabase } = useDiagram();
   const { setNotes } = useNotes();
   const { setAreas } = useAreas();
   const { setTypes } = useTypes();
-  const { settings } = useSettings();
   const { setEnums } = useEnums();
   const { setTasks } = useTasks();
   const { setTransform } = useTransform();
@@ -86,8 +76,8 @@ export default function Modal({
   const overwriteDiagram = () => {
     setTables(importData.tables);
     setRelationships(importData.relationships);
-    setAreas(importData.subjectAreas);
-    setNotes(importData.notes);
+    setAreas(importData.subjectAreas ?? []);
+    setNotes(importData.notes ?? []);
     if (importData.title) {
       setTitle(importData.title);
     }
@@ -147,45 +137,51 @@ export default function Modal({
       ast = parser.astify(importSource.src, {
         database: database === DB.GENERIC ? importDb : database,
       });
-    } catch (err) {
-      setError({
-        type: STATUS.ERROR,
-        message:
-          err.name +
-          " [Ln " +
-          err.location.start.line +
-          ", Col " +
-          err.location.start.column +
-          "]: " +
-          err.message,
-      });
+    } catch (error) {
+      const message = error.location
+        ? `${error.name} [Ln ${error.location.start.line}, Col ${error.location.start.column}]: ${error.message}`
+        : error.message;
+
+      setError({ type: STATUS.ERROR, message });
       return;
     }
 
-    const d = importSQL(
-      ast,
-      database === DB.GENERIC ? importDb : database,
-      database,
-    );
-    if (importSource.overwrite) {
-      setTables(d.tables);
-      setRelationships(d.relationships);
-      setTransform((prev) => ({ ...prev, pan: { x: 0, y: 0 } }));
-      setNotes([]);
-      setAreas([]);
-      if (databases[database].hasTypes) setTypes(d.types ?? []);
-      if (databases[database].hasEnums) setEnums(d.enums ?? []);
-      setUndoStack([]);
-      setRedoStack([]);
-    } else {
-      setTables((prev) =>
-        [...prev, ...d.tables].map((t, i) => ({ ...t, id: i })),
+    try {
+      const diagramData = importSQL(
+        ast,
+        database === DB.GENERIC ? importDb : database,
+        database,
       );
-      setRelationships((prev) =>
-        [...prev, ...d.relationships].map((r, i) => ({ ...r, id: i })),
-      );
+
+      if (importSource.overwrite) {
+        setTables(diagramData.tables);
+        setRelationships(diagramData.relationships);
+        setTransform((prev) => ({ ...prev, pan: { x: 0, y: 0 } }));
+        setNotes([]);
+        setAreas([]);
+        if (databases[database].hasTypes) setTypes(diagramData.types ?? []);
+        if (databases[database].hasEnums) setEnums(diagramData.enums ?? []);
+        setUndoStack([]);
+        setRedoStack([]);
+      } else {
+        setTables((prev) =>
+          [...prev, ...diagramData.tables].map((t, i) => ({ ...t, id: i })),
+        );
+        setRelationships((prev) =>
+          [...prev, ...diagramData.relationships].map((r, i) => ({
+            ...r,
+            id: i,
+          })),
+        );
+      }
+
+      setModal(MODAL.NONE);
+    } catch {
+      setError({
+        type: STATUS.ERROR,
+        message: `Please check for syntax errors or let us know about the error.`,
+      });
     }
-    setModal(MODAL.NONE);
   };
 
   const createNewDiagram = (id) => {
@@ -252,6 +248,7 @@ export default function Modal({
             setImportData={setImportData}
             error={error}
             setError={setError}
+            importFrom={importFrom}
           />
         );
       case MODAL.IMPORT_SRC:
@@ -297,14 +294,7 @@ export default function Modal({
               {modal === MODAL.IMG ? (
                 <Image src={exportData.data} alt="Diagram" height={280} />
               ) : (
-                <CodeMirror
-                  value={exportData.data}
-                  height="360px"
-                  extensions={languageExtension[exportData.extension]}
-                  onChange={() => {}}
-                  editable={false}
-                  theme={settings.mode === "dark" ? vscodeDark : githubLight}
-                />
+                <Code value={exportData.data} language={exportData.extension} />
               )}
               <div className="text-sm font-semibold mt-2">{t("filename")}:</div>
               <Input
@@ -330,7 +320,7 @@ export default function Modal({
       case MODAL.LANGUAGE:
         return <Language />;
       case MODAL.SHARE:
-        return <Share title={title} />;
+        return <Share title={title} setModal={setModal} />;
       default:
         return <></>;
     }
@@ -381,7 +371,8 @@ export default function Modal({
       width={getModalWidth(modal)}
       bodyStyle={{
         maxHeight: window.innerHeight - 280,
-        overflow: "auto",
+        overflow:
+          modal === MODAL.CODE || modal === MODAL.IMG ? "hidden" : "auto",
         direction: "ltr",
       }}
     >
